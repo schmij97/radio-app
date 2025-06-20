@@ -476,7 +476,7 @@ if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
     
-    print("🚀 Starting SiriusXM Activator on Railway...")
+    print("🚀 Starting SiriusXM Activator on Render...")
     print(f"🌐 Port: {port}")
     print("🔗 Will be available at: https://renslip.com")
     print("")
@@ -487,5 +487,5 @@ if __name__ == '__main__':
     print("")
     print("✅ Ready for production deployment!")
     
-    # Railway production configuration
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Render production configuration
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
