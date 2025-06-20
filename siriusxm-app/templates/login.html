@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SiriusXM Activator - Secure Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 400px;
+            width: 100%;
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+        
+        .login-header .content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .login-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .login-header p {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .lock-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.9;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .login-form {
+            padding: 40px 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+            background: white;
+            transform: translateY(-1px);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(46, 204, 113, 0.3);
+        }
+        
+        .login-btn:hover::before {
+            left: 100%;
+        }
+        
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        
+        .login-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash-message {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .flash-message.error {
+            background: linear-gradient(135deg, #fee, #fdd);
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+        
+        .flash-message.success {
+            background: linear-gradient(135deg, #efe, #dfd);
+            color: #363;
+            border: 1px solid #cfc;
+        }
+        
+        .flash-message.warning {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .flash-message.info {
+            background: linear-gradient(135deg, #e7f3ff, #cce7ff);
+            color: #0066cc;
+            border: 1px solid #b3d9ff;
+        }
+        
+        .security-info {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .security-info h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .security-info p {
+            color: #7f8c8d;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .domain-info {
+            background: linear-gradient(135deg, #e8f5e8, #f0f8f0);
+            border: 1px solid #2ecc71;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .domain-info h4 {
+            color: #27ae60;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .domain-info p {
+            color: #2c3e50;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .footer {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 20px;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 12px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .footer p {
+            margin-bottom: 5px;
+        }
+        
+        .footer .hosting-info {
+            margin-top: 10px;
+            font-size: 11px;
+            opacity: 0.7;
+        }
+        
+        .password-hint {
+            background: #fff9c4;
+            border: 1px solid #f1c40f;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #8e6a00;
+        }
+        
+        .password-hint strong {
+            color: #b7950b;
+        }
+        
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .login-form {
+                padding: 30px 20px;
+            }
+            
+            .login-header {
+                padding: 30px 20px;
+            }
+            
+            .login-header h1 {
+                font-size: 20px;
+            }
+            
+            .lock-icon {
+                font-size: 40px;
+            }
+        }
+        
+        /* Loading animation */
+        .loading {
+            opacity: 0.7;
+        }
+        
+        .loading .login-btn {
+            background: #95a5a6;
+            cursor: wait;
+        }
+        
+        .loading .login-btn::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            margin-left: 10px;
+            border: 2px solid transparent;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="content">
+                <div class="lock-icon">🔐</div>
+                <h1>SiriusXM Activator</h1>
+                <p>Secure Access Required</p>
+            </div>
+        </div>
+        
+        <div class="login-form">
+            <div class="domain-info">
+                <h4>🌐 renslip.com</h4>
+                <p>Professional Radio Activation Service</p>
+            </div>
+            
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" id="loginForm">
+                <div class="form-group">
+                    <label for="password">🔑 Access Password:</label>
+                    <input type="password" 
+                           id="password" 
+                           name="password" 
+                           placeholder="Enter your secure password"
+                           required
+                           autocomplete="current-password"
+                           minlength="4">
+                </div>
+                
+                <button type="submit" class="login-btn" id="loginBtn">
+                    🚀 ACCESS ACTIVATOR
+                </button>
+            </form>
+            
+            <div class="password-hint">
+                <strong>🔐 Security Note:</strong> Enter the password configured by your administrator. Sessions expire after 1 hour of inactivity for security.
+            </div>
+            
+            <div class="security-info">
+                <h3>🛡️ <span>Security Features</span></h3>
+                <p>
+                    • Password-protected access<br>
+                    • Secure session management<br>
+                    • Professional radio activation<br>
+                    • HTTPS encrypted connection
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>SiriusXM Radio Activation Service</strong></p>
+            <p>Secure • Reliable • Professional</p>
+            <div class="hosting-info">
+                <p>Powered by Railway • Domain: renslip.com</p>
+                <p>© 2024 Professional Activation Tool</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-focus password field when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('password').focus();
+        });
+        
+        // Handle form submission with loading state
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const btn = document.getElementById('loginBtn');
+            const form = document.getElementById('loginForm');
+            const password = document.getElementById('password').value;
+            
+            // Basic validation
+            if (password.length < 4) {
+                e.preventDefault();
+                alert('Password must be at least 4 characters long');
+                return;
+            }
+            
+            // Show loading state
+            btn.textContent = '🔐 VERIFYING ACCESS...';
+            btn.disabled = true;
+            form.classList.add('loading');
+            
+            // Add slight delay to show loading animation
+            setTimeout(() => {
+                // Form will submit naturally
+            }, 500);
+        });
+        
+        // Handle password input
+        document.getElementById('password').addEventListener('input', function(e) {
+            const btn = document.getElementById('loginBtn');
+            if (e.target.value.length >= 4) {
+                btn.style.opacity = '1';
+            } else {
+                btn.style.opacity = '0.7';
+            }
+        });
+        
+        // Show caps lock warning
+        document.getElementById('password').addEventListener('keyup', function(e) {
+            // Simple caps lock detection
+            if (e.getModifierState && e.getModifierState('CapsLock')) {
+                if (!document.getElementById('capsWarning')) {
+                    const warning = document.createElement('div');
+                    warning.id = 'capsWarning';
+                    warning.style.cssText = `
+                        background: #fff3cd;
+                        border: 1px solid #ffeaa7;
+                        border-radius: 6px;
+                        padding: 8px 12px;
+                        margin-top: 8px;
+                        font-size: 12px;
+                        color: #856404;
+                    `;
+                    warning.innerHTML = '⚠️ Caps Lock is ON';
+                    e.target.parentNode.appendChild(warning);
+                }
+            } else {
+                const warning = document.getElementById('capsWarning');
+                if (warning) {
+                    warning.remove();
+                }
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Enter key submits form
+            if (e.key === 'Enter' && e.target.id !== 'password') {
+                document.getElementById('loginForm').submit();
+            }
+        });
+        
+        // Console logging for debugging
+        console.log('🔐 SiriusXM Activator Login Page');
+        console.log('🌐 Domain: renslip.com');
+        console.log('🚀 Hosted on Railway');
+        console.log('⚡ Session timeout: 1 hour');
+        
+        // Add subtle animations on page load
+        setTimeout(() => {
+            document.querySelector('.login-container').style.transform = 'scale(1.01)';
+            setTimeout(() => {
+                document.querySelector('.login-container').style.transform = 'scale(1)';
+            }, 150);
+        }, 300);
+    </script>
+</body>
+</html>
