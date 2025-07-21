@@ -147,7 +147,7 @@ def save_radio_ids(radio_ids: List[Tuple[str, str]]) -> None:
 @app.route('/')
 @login_required
 def index():
-    """Main page - no dealer selection needed"""
+    """Main page - no dealer selection, Montgomery AL hardcoded"""
     radios = load_radio_ids()
     return render_template('index.html', radios=radios)
 
@@ -227,7 +227,7 @@ def activate():
     global activation_status
     activation_status = {"progress": 0, "status": "Starting activation...", "completed": False, "success": False}
     
-    # Start activation in background thread
+    # Start activation in background thread (Montgomery, AL hardcoded)
     thread = threading.Thread(target=run_activation, args=(radio_id,))
     thread.daemon = True
     thread.start()
