@@ -281,6 +281,41 @@ class SiriusXMActivator:
         self.auth_token = ""
         self.seq = ""
     
+    def get_reporting_params(self, svc_id):
+        """Generate reporting params string"""
+        base_params = {
+            "os": "17.0",
+            "dm": "iPhone 14 Pro", 
+            "did": self.uuid4,
+            "ua": "iPhone",
+            "aid": "DealerApp",
+            "aname": "SiriusXM Dealer",
+            "chnl": "mobile",
+            "plat": "ios",
+            "aver": "3.1.0",
+            "atype": "native",
+            "stype": "b2c",
+            "kuid": "",
+            "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+            "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+            "mfaname": "DealerApp",
+            "sdkversion": "9.5.36",
+            "sdktype": "js",
+            "fid": "frmRadioRefresh",
+            "sessiontype": "I",
+            "clientUUID": "1742536405634-41a8-0de0-125c",
+            "rsid": "1742536405654-b954-784f-38d2",
+            "svcid": svc_id
+        }
+        
+        # Build URL encoded string manually to avoid issues
+        params_list = []
+        for key, value in base_params.items():
+            params_list.append(f'"{key}":"{value}"')
+        
+        params_str = "{" + ",".join(params_list) + "}"
+        return params_str.replace(' ', '%20').replace('"', '%22').replace(':', '%3A').replace(',', '%2C').replace('{', '%7B').replace('}', '%7D')
+    
     def activate_radio(self, radio_id, status_callback, progress_callback):
         self.radio_id_input = radio_id.upper()
         status_callback(f"🔄 Starting activation for: {self.radio_id_input}")
@@ -346,7 +381,7 @@ class SiriusXMActivator:
                     "Content-Type": "application/x-www-form-urlencoded",
                     "X-Voltmx-SDK-Version": "9.5.36",
                     "X-Voltmx-App-Key": "67cfe0220c41a54cb4e768723ad56b41",
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22login_$anonymousProvider%22%7D',
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("login_$anonymousProvider"),
                 },
             )
             self.auth_token = response.json().get('claims_token').get('value')
@@ -364,7 +399,7 @@ class SiriusXMActivator:
                     "X-Voltmx-DeviceId": self.uuid4,
                     "Content-Type": "application/x-www-form-urlencoded",
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmHome%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22VersionControl%22%7D',
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("VersionControl"),
                 },
                 data={
                     "deviceCategory": "iPhone",
@@ -389,7 +424,7 @@ class SiriusXMActivator:
                     "X-Voltmx-DeviceId": self.uuid4,
                     "Content-Type": "application/x-www-form-urlencoded",
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmHome%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22getProperties%22%7D',
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("getProperties"),
                 },
             )
             return True
@@ -406,7 +441,84 @@ class SiriusXMActivator:
                     "X-Voltmx-DeviceId": self.uuid4,
                     "Content-Type": "application/x-www-form-urlencoded",
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmRadioRefresh%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22BlockListDevice%22%7D',
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("updateDeviceSATRefreshWithPriority"),
+                },
+                data={
+                    "deviceId": self.radio_id_input,
+                    "appVersion": "3.1.0",
+                    "lng": "-86.210313195",
+                    "deviceID": self.uuid4,
+                    "provisionPriority": "2",
+                    "provisionType": "activate",
+                    "lat": "32.37436705",
+                },
+            )
+            self.seq = response.json().get('seqValue')
+            return self.seq
+        except requests.exceptions.RequestException:
+            return None
+
+    def getCRM(self):
+        try:
+            response = self.session.post(
+                url="https://dealerapp.siriusxm.com/services/DemoConsumptionRules/GetCRMAccountPlanInformation",
+                headers={
+                    "Accept": "*/*",
+                    "X-Voltmx-API-Version": "1.0",
+                    "X-Voltmx-DeviceId": self.uuid4,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Voltmx-Authorization": self.auth_token,
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("GetCRMAccountPlanInformation"),
+                },
+                data={
+                    "seqVal": self.seq,
+                    "deviceId": self.radio_id_input,
+                },
+            )
+            return True
+        except requests.exceptions.RequestException:
+            return None
+
+    def dbUpdate(self):
+        try:
+            response = self.session.post(
+                url="https://dealerapp.siriusxm.com/services/DBSuccessUpdate/DBUpdateForGoogle",
+                headers={
+                    "Accept": "*/*",
+                    "X-Voltmx-API-Version": "1.0",
+                    "X-Voltmx-DeviceId": self.uuid4,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Voltmx-Authorization": self.auth_token,
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("DBUpdateForGoogle"),
+                },
+                data={
+                    "OM_ELIGIBILITY_STATUS": "Eligible",
+                    "appVersion": "3.1.0",
+                    "flag": "failure",
+                    "Radio_ID": self.radio_id_input,
+                    "deviceID": self.uuid4,
+                    "G_PLACES_REQUEST": "",
+                    "OS_Version": "iPhone 12.5.7",
+                    "G_PLACES_RESPONSE": "",
+                    "Confirmation_Status": "SUCCESS",
+                    "seqVal": self.seq,
+                },
+            )
+            return True
+        except requests.exceptions.RequestException:
+            return None
+
+    def blocklist(self):
+        try:
+            response = self.session.post(
+                url="https://dealerapp.siriusxm.com/services/USBlockListDevice/BlockListDevice",
+                headers={
+                    "Accept": "*/*",
+                    "X-Voltmx-API-Version": "1.0",
+                    "X-Voltmx-DeviceId": self.uuid4,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Voltmx-Authorization": self.auth_token,
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("BlockListDevice"),
                 },
                 data={
                     "deviceId": self.uuid4,
@@ -443,7 +555,7 @@ class SiriusXMActivator:
                     "X-Voltmx-DeviceId": self.uuid4,
                     "Content-Type": "application/x-www-form-urlencoded",
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmRadioRefresh%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22CreateAccount%22%7D',
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("CreateAccount"),
                 },
                 data={
                     "seqVal": self.seq,
@@ -466,7 +578,7 @@ class SiriusXMActivator:
                     "X-Voltmx-DeviceId": self.uuid4,
                     "Content-Type": "application/x-www-form-urlencoded",
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmRadioRefresh%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22updateDeviceSATRefreshWithPriority%22%7D',
+                    "X-Voltmx-ReportingParams": self.get_reporting_params("updateDeviceSATRefreshWithPriority"),
                 },
                 data={
                     "deviceId": self.radio_id_input,
@@ -499,81 +611,4 @@ if __name__ == '__main__':
     print("✅ Ready for production deployment!")
     
     # Render production configuration
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22updateDeviceSATRefreshWithPriority%22%7D',
-                },
-                data={
-                    "deviceId": self.radio_id_input,
-                    "appVersion": "3.1.0",
-                    "lng": "-86.210313195",
-                    "deviceID": self.uuid4,
-                    "provisionPriority": "2",
-                    "provisionType": "activate",
-                    "lat": "32.37436705",
-                },
-            )
-            self.seq = response.json().get('seqValue')
-            return self.seq
-        except requests.exceptions.RequestException:
-            return None
-
-    def getCRM(self):
-        try:
-            response = self.session.post(
-                url="https://dealerapp.siriusxm.com/services/DemoConsumptionRules/GetCRMAccountPlanInformation",
-                headers={
-                    "Accept": "*/*",
-                    "X-Voltmx-API-Version": "1.0",
-                    "X-Voltmx-DeviceId": self.uuid4,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmRadioRefresh%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22GetCRMAccountPlanInformation%22%7D',
-                },
-                data={
-                    "seqVal": self.seq,
-                    "deviceId": self.radio_id_input,
-                },
-            )
-            return True
-        except requests.exceptions.RequestException:
-            return None
-
-    def dbUpdate(self):
-        try:
-            response = self.session.post(
-                url="https://dealerapp.siriusxm.com/services/DBSuccessUpdate/DBUpdateForGoogle",
-                headers={
-                    "Accept": "*/*",
-                    "X-Voltmx-API-Version": "1.0",
-                    "X-Voltmx-DeviceId": self.uuid4,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmRadioRefresh%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%221742536405634-41a8-0de0-125c%22,%22rsid%22:%221742536405654-b954-784f-38d2%22,%22svcid%22:%22DBUpdateForGoogle%22%7D',
-                },
-                data={
-                    "OM_ELIGIBILITY_STATUS": "Eligible",
-                    "appVersion": "3.1.0",
-                    "flag": "failure",
-                    "Radio_ID": self.radio_id_input,
-                    "deviceID": self.uuid4,
-                    "G_PLACES_REQUEST": "",
-                    "OS_Version": "iPhone 12.5.7",
-                    "G_PLACES_RESPONSE": "",
-                    "Confirmation_Status": "SUCCESS",
-                    "seqVal": self.seq,
-                },
-            )
-            return True
-        except requests.exceptions.RequestException:
-            return None
-
-    def blocklist(self):
-        try:
-            response = self.session.post(
-                url="https://dealerapp.siriusxm.com/services/USBlockListDevice/BlockListDevice",
-                headers={
-                    "Accept": "*/*",
-                    "X-Voltmx-API-Version": "1.0",
-                    "X-Voltmx-DeviceId": self.uuid4,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": '%7B%22os%22:%2217.0%22,%22dm%22:%22iPhone%2014%20Pro%22,%22did%22:%22' + self.uuid4 + '%22,%22ua%22:%22iPhone%22,%22aid%22:%22DealerApp%22,%22aname%22:%22SiriusXM%20Dealer%22,%22chnl%22:%22mobile%22,%22plat%22:%22ios%22,%22aver%22:%223.1.0%22,%22atype%22:%22native%22,%22stype%22:%22b2c%22,%22kuid%22:%22%22,%22mfaid%22:%22df7be3dc-e278-436c-b2f8-4cfde321df0a%22,%22mfbaseid%22:%22efb9acb6-daea-4f2f-aeb3-b17832bdd47b%22,%22mfaname%22:%22DealerApp%22,%22sdkversion%22:%229.5.36%22,%22sdktype%22:%22js%22,%22fid%22:%22frmRadioRefresh%22,%22sessiontype%22:%22I%22,%22clientUUID%22:%
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
