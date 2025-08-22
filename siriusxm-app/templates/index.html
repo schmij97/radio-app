@@ -430,10 +430,9 @@
                 <h3>Select Radio ID:</h3>
                 <select id="radioSelect" class="radio-select">
                     <option value="">Choose a radio...</option>
-                    <!-- Sample radio IDs - these would come from your backend -->
-                    <option value="ABC123XY" data-name="Dave's Truck">Dave's Truck: ABC123XY</option>
-                    <option value="DEF456ZA" data-name="Shop Vehicle">Shop Vehicle: DEF456ZA</option>
-                    <option value="GHI789BC" data-name="Customer Car">Customer Car: GHI789BC</option>
+                    {% for name, radio_id in radios %}
+                    <option value="{{ radio_id }}" data-name="{{ name }}">{{ name }}: {{ radio_id }}</option>
+                    {% endfor %}
                 </select>
             </div>
             
