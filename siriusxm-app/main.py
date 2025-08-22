@@ -18,7 +18,11 @@ app = Flask(__name__)
 
 # IMPORTANT: Change these before deploying!
 app.config['SECRET_KEY'] = 'unique-key'
-ADMIN_PASSWORD = "DaveHall"
+# User credentials
+USERS = {
+    'DaveHall': {'password': 'schmij', 'role': 'admin'},
+    'ShelbyHank': {'password': 'schmij', 'role': 'operator'}
+}
 
 # Session settings
 SESSION_TIMEOUT = 3600  # 1 hour in seconds
@@ -50,15 +54,25 @@ def login_required(f):
 def login():
     """Login page"""
     if request.method == 'POST':
+        username = request.form.get('username')
         password = request.form.get('password')
         
-        if password == ADMIN_PASSWORD:
+        if username == 'DaveHall' and password == 'schmij':
             session['authenticated'] = True
+            session['user'] = 'DaveHall'
+            session['role'] = 'admin'
+            session['login_time'] = time.time()
+            flash('Successfully logged in!', 'success')
+            return redirect(url_for('index'))
+        elif username == 'ShelbyHank' and password == 'schmij':
+            session['authenticated'] = True
+            session['user'] = 'ShelbyHank'
+            session['role'] = 'operator'
             session['login_time'] = time.time()
             flash('Successfully logged in!', 'success')
             return redirect(url_for('index'))
         else:
-            flash('Invalid password. Please try again.', 'error')
+            flash('Invalid username or password', 'error')
     
     return render_template('login.html')
 
@@ -161,7 +175,11 @@ def get_radios():
 @app.route('/api/radios/add', methods=['POST'])
 @login_required
 def add_radio():
-    """Add a new radio ID"""
+    """Add a new radio ID - Admin only"""
+    # Check if user is admin
+    if session.get('role') != 'admin':
+        return jsonify({"error": "Administrator access required"}), 403
+    
     data = request.json
     name = data.get('name', '').strip()
     radio_id = data.get('radio_id', '').strip().upper()
@@ -197,7 +215,11 @@ def add_radio():
 @app.route('/api/radios/delete', methods=['POST'])
 @login_required
 def delete_radio():
-    """Delete a radio ID"""
+    """Delete a radio ID - Admin only"""
+    # Check if user is admin
+    if session.get('role') != 'admin':
+        return jsonify({"error": "Administrator access required"}), 403
+    
     data = request.json
     radio_id = data.get('radio_id', '').strip().upper()
     
@@ -612,3 +634,4 @@ if __name__ == '__main__':
     
     # Render production configuration
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+
