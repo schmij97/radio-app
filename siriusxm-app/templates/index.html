@@ -505,15 +505,16 @@
     </div>
     
     <script>
-        // Get user info from login (stored in localStorage for demo)
+        // Get user info from Flask session (passed from backend)
         let currentUser = {
-            username: localStorage.getItem('currentUser') || 'Demo',
-            role: localStorage.getItem('userRole') || 'operator'
+            username: '{{ user.username if user else "Unknown" }}',
+            role: '{{ user.role if user else "operator" }}'
         };
         
-        // Redirect to login if not logged in
-        if (!localStorage.getItem('currentUser')) {
-            window.location.href = 'login.html';
+        // Check if user info was properly loaded
+        if (!currentUser.username || currentUser.username === 'Unknown') {
+            // Redirect to login if no user info
+            window.location.href = '/login';
         }
         
         let activationInProgress = false;
@@ -555,9 +556,7 @@
         }
         
         function logout() {
-            localStorage.removeItem('currentUser');
-            localStorage.removeItem('userRole');
-            window.location.href = 'login.html';
+            window.location.href = '/logout';
         }
         
         function showAddModal() {

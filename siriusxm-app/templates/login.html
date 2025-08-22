@@ -371,9 +371,15 @@
             </div>
             
             <!-- Login Error Messages Would Show Here -->
-            <div class="flash-messages" id="flashMessages" style="display: none;">
-                <div class="flash-message error" id="errorMessage"></div>
-            </div>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash-message {{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
             
             <form action="/login" method="POST" id="loginForm">
                 <div class="form-group">
@@ -402,15 +408,7 @@
                 </button>
             </form>
             
-            <div class="user-accounts-info">
-                <strong>🔐 User Accounts:</strong>
-                <div class="account">
-                    <strong>👑 DaveHall:</strong> Administrator - Full access to add, delete, and activate radio IDs
-                </div>
-                <div class="account">
-                    <strong>⚙️ ShelbyHank:</strong> Operator - Can activate existing radio IDs only
-                </div>
-            </div>
+
             
             <div class="security-info">
                 <h3>🛡️ <span>Security Features</span></h3>
@@ -447,8 +445,6 @@
         
         // Handle form submission
         document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault(); // Prevent default for demo
-            
             const btn = document.getElementById('loginBtn');
             const form = document.getElementById('loginForm');
             const username = document.getElementById('username').value.trim();
@@ -456,12 +452,14 @@
             
             // Basic validation
             if (!username) {
-                showError('Please enter your username');
+                e.preventDefault();
+                alert('Please enter your username');
                 return;
             }
             
             if (password.length < 4) {
-                showError('Password must be at least 4 characters long');
+                e.preventDefault();
+                alert('Password must be at least 4 characters long');
                 return;
             }
             
@@ -470,41 +468,9 @@
             btn.disabled = true;
             form.classList.add('loading');
             
-            // Demo authentication (replace with real backend call)
-            setTimeout(() => {
-                if (demoUsers[username] && demoUsers[username] === password) {
-                    // Success - redirect to index.html
-                    localStorage.setItem('currentUser', username);
-                    localStorage.setItem('userRole', username === 'DaveHall' ? 'admin' : 'operator');
-                    window.location.href = 'index.html';
-                } else {
-                    // Failed login
-                    showError('Invalid username or password');
-                    resetForm();
-                }
-            }, 1500);
+            // Form will submit to Flask backend naturally
         });
         
-        function showError(message) {
-            const flashMessages = document.getElementById('flashMessages');
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = message;
-            flashMessages.style.display = 'block';
-            
-            // Hide error after 5 seconds
-            setTimeout(() => {
-                flashMessages.style.display = 'none';
-            }, 5000);
-        }
-        
-        function resetForm() {
-            const btn = document.getElementById('loginBtn');
-            const form = document.getElementById('loginForm');
-            
-            btn.textContent = '🚀 ACCESS ACTIVATOR';
-            btn.disabled = false;
-            form.classList.remove('loading');
-        }
         
         // Handle input validation
         document.getElementById('username').addEventListener('input', updateLoginButton);
@@ -551,9 +517,8 @@
         });
         
         console.log('🔐 SiriusXM Activator Login Page');
-        console.log('Demo Users:');
-        console.log('👑 DaveHall / schmij');
-        console.log('⚙️ ShelbyHank / schmij');
+        console.log('🌐 Domain: renslip.com');
+        console.log('🚀 Hosted on Railway');
     </script>
 </body>
 </html>
