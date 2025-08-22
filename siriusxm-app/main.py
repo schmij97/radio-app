@@ -18,6 +18,7 @@ app = Flask(__name__)
 
 # IMPORTANT: Change these before deploying!
 app.config['SECRET_KEY'] = 'unique-key'
+
 # User credentials
 USERS = {
     'DaveHall': {'password': 'schmij', 'role': 'admin'},
@@ -50,6 +51,14 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+@app.route('/')
+def home():
+    """Home page - redirect based on login status"""
+    if session.get('authenticated'):
+        return redirect(url_for('dashboard'))
+    else:
+        return redirect(url_for('login'))
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login page"""
@@ -57,20 +66,13 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        if username == 'DaveHall' and password == 'schmij':
+        if username in USERS and USERS[username]['password'] == password:
             session['authenticated'] = True
-            session['user'] = 'DaveHall'
-            session['role'] = 'admin'
+            session['user'] = username
+            session['role'] = USERS[username]['role']
             session['login_time'] = time.time()
             flash('Successfully logged in!', 'success')
-            return redirect(url_for('index'))
-        elif username == 'ShelbyHank' and password == 'schmij':
-            session['authenticated'] = True
-            session['user'] = 'ShelbyHank'
-            session['role'] = 'operator'
-            session['login_time'] = time.time()
-            flash('Successfully logged in!', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('dashboard'))
         else:
             flash('Invalid username or password', 'error')
     
@@ -158,12 +160,16 @@ def save_radio_ids(radio_ids: List[Tuple[str, str]]) -> None:
     except Exception as e:
         print(f"Error saving radio IDs: {e}")
 
-@app.route('/')
+@app.route('/dashboard')
 @login_required
-def index():
+def dashboard():
     """Main page - no dealer selection, Montgomery AL hardcoded"""
     radios = load_radio_ids()
-    return render_template('index.html', radios=radios)
+    user_info = {
+        'username': session.get('user'),
+        'role': session.get('role')
+    }
+    return render_template('index.html', radios=radios, user=user_info)
 
 @app.route('/api/radios')
 @login_required
@@ -625,13 +631,12 @@ if __name__ == '__main__':
     print(f"🌐 Port: {port}")
     print("🔗 Will be available at: https://app.renslip.com")
     print("")
-    print("⚠️  IMPORTANT SECURITY REMINDERS:")
-    print("🔐 Current password: DaveHall")
-    print("🛠️  CHANGE PASSWORD before sharing!")
+    print("⚠️  UPDATED USER SYSTEM:")
+    print("👑 DaveHall / schmij (Administrator)")
+    print("⚙️ ShelbyHank / schmij (Operator)")
     print("🔑 CHANGE SECRET KEY before sharing!")
     print("")
     print("✅ Ready for production deployment!")
     
     # Render production configuration
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
-
