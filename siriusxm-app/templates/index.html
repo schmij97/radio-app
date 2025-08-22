@@ -49,6 +49,30 @@
             font-size: 14px;
         }
         
+        .user-info {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        
+        .user-role {
+            background: rgba(255,255,255,0.2);
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+        
+        .admin-role {
+            background: rgba(72, 187, 120, 0.3);
+        }
+        
+        .operator-role {
+            background: rgba(66, 153, 225, 0.3);
+        }
+        
         .logout-btn {
             position: absolute;
             top: 20px;
@@ -161,7 +185,7 @@
             color: white;
         }
         
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #3182ce;
         }
         
@@ -170,7 +194,7 @@
             color: white;
         }
         
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background: #e53e3e;
         }
         
@@ -181,6 +205,13 @@
         
         .btn-info:hover {
             background: #319795;
+        }
+        
+        .btn:disabled {
+            background: #a0aec0;
+            color: #718096;
+            cursor: not-allowed;
+            opacity: 0.6;
         }
         
         .activate-btn {
@@ -201,7 +232,7 @@
             margin-bottom: 25px;
         }
         
-        .activate-btn:hover {
+        .activate-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(72, 187, 120, 0.3);
         }
@@ -314,6 +345,26 @@
             background: #cbd5e0;
         }
         
+        .access-denied {
+            background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+            border: 1px solid #fc8181;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #742a2a;
+            text-align: center;
+        }
+        
+        .permission-info {
+            background: linear-gradient(135deg, #fefcbf 0%, #faf089 100%);
+            border: 1px solid #f6e05e;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #744210;
+            font-size: 13px;
+        }
+        
         @media (max-width: 600px) {
             .container {
                 margin: 10px;
@@ -335,12 +386,21 @@
             .btn {
                 justify-content: center;
             }
+            
+            .user-info {
+                position: static;
+                text-align: center;
+                margin-bottom: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
+            <div class="user-info" id="userInfo">
+                <!-- User info will be populated by JavaScript -->
+            </div>
             <button class="logout-btn" onclick="logout()">🔓 Logout</button>
             <h1>
                 📡 SiriusXM Activator
@@ -361,23 +421,29 @@
                 Auto Connection Montgomery - 395 Eastern Blvd
             </div>
             
+            <!-- Permission Info -->
+            <div class="permission-info" id="permissionInfo">
+                <!-- Will be populated based on user role -->
+            </div>
+            
             <div class="form-section">
                 <h3>Select Radio ID:</h3>
                 <select id="radioSelect" class="radio-select">
                     <option value="">Choose a radio...</option>
-                    {% for name, radio_id in radios %}
-                    <option value="{{ radio_id }}" data-name="{{ name }}">{{ name }}: {{ radio_id }}</option>
-                    {% endfor %}
+                    <!-- Sample radio IDs - these would come from your backend -->
+                    <option value="ABC123XY" data-name="Dave's Truck">Dave's Truck: ABC123XY</option>
+                    <option value="DEF456ZA" data-name="Shop Vehicle">Shop Vehicle: DEF456ZA</option>
+                    <option value="GHI789BC" data-name="Customer Car">Customer Car: GHI789BC</option>
                 </select>
             </div>
             
             <div class="radio-management">
                 <h3>📊 Radio Management</h3>
                 <div class="radio-buttons">
-                    <button class="btn btn-primary" onclick="showAddModal()">
+                    <button class="btn btn-primary" id="addBtn" onclick="showAddModal()">
                         ➕ Add New
                     </button>
-                    <button class="btn btn-danger" onclick="deleteRadio()">
+                    <button class="btn btn-danger" id="deleteBtn" onclick="deleteRadio()">
                         🗑️ Delete
                     </button>
                     <button class="btn btn-info" onclick="refreshRadios()">
@@ -423,14 +489,82 @@
         </div>
     </div>
     
+    <!-- Access Denied Modal -->
+    <div id="accessDeniedModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #e53e3e;">🚫 Access Denied</h3>
+            <div class="access-denied">
+                <strong>Insufficient Permissions</strong><br>
+                This action requires Administrator access.<br>
+                Contact DaveHall for radio management.
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeAccessDeniedModal()">OK</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
+        // Get user info from login (stored in localStorage for demo)
+        let currentUser = {
+            username: localStorage.getItem('currentUser') || 'Demo',
+            role: localStorage.getItem('userRole') || 'operator'
+        };
+        
+        // Redirect to login if not logged in
+        if (!localStorage.getItem('currentUser')) {
+            window.location.href = 'login.html';
+        }
+        
         let activationInProgress = false;
         
+        // Initialize user interface based on permissions
+        function initializeUserInterface() {
+            const userInfo = document.getElementById('userInfo');
+            const permissionInfo = document.getElementById('permissionInfo');
+            const addBtn = document.getElementById('addBtn');
+            const deleteBtn = document.getElementById('deleteBtn');
+            
+            // Set user info display
+            userInfo.innerHTML = `
+                <div>👤 ${currentUser.username}</div>
+                <div class="user-role ${currentUser.role}-role">
+                    ${currentUser.role === 'admin' ? '🔧 ADMINISTRATOR' : '⚙️ OPERATOR'}
+                </div>
+            `;
+            
+            if (currentUser.role === 'admin') {
+                // Full access for DaveHall
+                permissionInfo.innerHTML = `
+                    <strong>🔧 Administrator Access</strong><br>
+                    You have full access to add, delete, and activate radio IDs.
+                `;
+                addBtn.disabled = false;
+                deleteBtn.disabled = false;
+            } else {
+                // Limited access for operators
+                permissionInfo.innerHTML = `
+                    <strong>⚙️ Operator Access</strong><br>
+                    You can activate existing radio IDs. Contact DaveHall to add or remove radio IDs.
+                `;
+                addBtn.disabled = true;
+                deleteBtn.disabled = true;
+                addBtn.title = "Administrator access required";
+                deleteBtn.title = "Administrator access required";
+            }
+        }
+        
         function logout() {
-            window.location.href = '/logout';
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userRole');
+            window.location.href = 'login.html';
         }
         
         function showAddModal() {
+            if (currentUser.role !== 'admin') {
+                showAccessDenied();
+                return;
+            }
             document.getElementById('addModal').style.display = 'block';
         }
         
@@ -440,7 +574,20 @@
             document.getElementById('radioId').value = '';
         }
         
-        async function addRadio() {
+        function showAccessDenied() {
+            document.getElementById('accessDeniedModal').style.display = 'block';
+        }
+        
+        function closeAccessDeniedModal() {
+            document.getElementById('accessDeniedModal').style.display = 'none';
+        }
+        
+        function addRadio() {
+            if (currentUser.role !== 'admin') {
+                showAccessDenied();
+                return;
+            }
+            
             const name = document.getElementById('radioName').value.trim();
             const radioId = document.getElementById('radioId').value.trim().toUpperCase();
             
@@ -449,89 +596,49 @@
                 return;
             }
             
-            try {
-                const response = await fetch('/api/radios/add', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ name, radio_id: radioId })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert(result.message);
-                    closeAddModal();
-                    refreshRadios();
-                } else {
-                    alert(result.error || 'Failed to add radio');
-                }
-            } catch (error) {
-                alert('Error adding radio: ' + error.message);
-            }
+            // Add to dropdown (in real app, this would save to database)
+            const select = document.getElementById('radioSelect');
+            const option = document.createElement('option');
+            option.value = radioId;
+            option.textContent = `${name}: ${radioId}`;
+            option.setAttribute('data-name', name);
+            select.appendChild(option);
+            
+            alert(`✅ Radio added successfully!\n${name}: ${radioId}`);
+            closeAddModal();
         }
         
-        async function deleteRadio() {
+        function deleteRadio() {
+            if (currentUser.role !== 'admin') {
+                showAccessDenied();
+                return;
+            }
+            
             const select = document.getElementById('radioSelect');
             const radioId = select.value;
+            const radioName = select.options[select.selectedIndex]?.dataset.name || radioId;
             
-            if (!radioId || radioId === 'CUSTOM') {
+            if (!radioId) {
                 alert('Please select a radio to delete');
                 return;
             }
             
-            if (!confirm('Are you sure you want to delete this radio?')) {
+            if (!confirm(`⚠️ Are you sure you want to delete this radio?\n\n${radioName}: ${radioId}\n\nThis action cannot be undone.`)) {
                 return;
             }
             
-            try {
-                const response = await fetch('/api/radios/delete', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ radio_id: radioId })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert(result.message);
-                    refreshRadios();
-                } else {
-                    alert(result.error || 'Failed to delete radio');
-                }
-            } catch (error) {
-                alert('Error deleting radio: ' + error.message);
-            }
+            // Remove from dropdown (in real app, this would delete from database)
+            select.removeChild(select.options[select.selectedIndex]);
+            alert(`🗑️ Radio deleted successfully!\n${radioName}: ${radioId}`);
         }
         
-        async function refreshRadios() {
-            try {
-                const response = await fetch('/api/radios');
-                const radios = await response.json();
-                
-                const select = document.getElementById('radioSelect');
-                const currentValue = select.value;
-                
-                select.innerHTML = '<option value="">Choose a radio...</option>';
-                
-                radios.forEach(radio => {
-                    const option = document.createElement('option');
-                    option.value = radio.radio_id;
-                    option.textContent = `${radio.name}: ${radio.radio_id}`;
-                    option.setAttribute('data-name', radio.name);
-                    select.appendChild(option);
-                });
-                
-                select.value = currentValue;
-            } catch (error) {
-                console.error('Error refreshing radios:', error);
-            }
+        function refreshRadios() {
+            // In real app, this would fetch from your backend
+            console.log('🔄 Refreshing radio list...');
+            alert('Radio list refreshed!');
         }
         
-        async function activateRadio() {
+        function activateRadio() {
             if (activationInProgress) {
                 alert('Activation already in progress!');
                 return;
@@ -539,16 +646,15 @@
             
             const select = document.getElementById('radioSelect');
             const radioId = select.value;
+            const radioName = select.options[select.selectedIndex]?.dataset.name || 'Unknown';
             
             if (!radioId) {
-                alert('Please select a radio ID');
+                alert('Please select a radio ID to activate');
                 return;
             }
             
-            if (radioId === 'CUSTOM') {
-                const customRadioId = prompt('Enter custom radio ID:');
-                if (!customRadioId) return;
-                radioId = customRadioId.toUpperCase();
+            if (!confirm(`🚀 Start activation for:\n${radioName}: ${radioId}\n\nProceed with activation?`)) {
+                return;
             }
             
             activationInProgress = true;
@@ -556,78 +662,65 @@
             // Show progress and status
             document.getElementById('progressBar').style.display = 'block';
             document.getElementById('statusContainer').style.display = 'block';
-            document.getElementById('statusContainer').textContent = 'Starting activation...';
+            document.getElementById('statusContainer').textContent = `Starting activation for ${radioName} (${radioId})...`;
             
             // Disable activate button
             const activateBtn = document.querySelector('.activate-btn');
             activateBtn.disabled = true;
             activateBtn.textContent = '🔄 ACTIVATING...';
             
-            try {
-                // Start activation
-                const response = await fetch('/activate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ radio_id: radioId })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to start activation');
-                }
-                
-                // Poll for status updates
-                pollStatus();
-                
-            } catch (error) {
-                alert('Error starting activation: ' + error.message);
-                resetActivationUI();
-            }
+            // Simulate activation process
+            simulateActivation(radioName, radioId);
         }
         
-        async function pollStatus() {
-            try {
-                const response = await fetch('/status');
-                const status = await response.json();
-                
-                // Update progress bar
-                const progressFill = document.getElementById('progressFill');
-                const progressPercent = (status.progress / 11) * 100;
-                progressFill.style.width = progressPercent + '%';
-                
-                // Update status text
-                document.getElementById('statusContainer').textContent = status.status;
-                
-                // Auto-scroll to bottom
-                const container = document.getElementById('statusContainer');
-                container.scrollTop = container.scrollHeight;
-                
-                if (!status.completed) {
-                    // Continue polling
-                    setTimeout(pollStatus, 1000);
+        function simulateActivation(radioName, radioId) {
+            const statusContainer = document.getElementById('statusContainer');
+            const progressFill = document.getElementById('progressFill');
+            
+            const steps = [
+                'Connecting to SiriusXM servers...',
+                'Validating radio ID...',
+                'Checking subscription status...',
+                'Sending activation signal...',
+                'Updating radio database...',
+                'Verifying activation...',
+                'Activation complete!'
+            ];
+            
+            let currentStep = 0;
+            
+            const interval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    statusContainer.textContent += '\n' + steps[currentStep];
+                    statusContainer.scrollTop = statusContainer.scrollHeight;
+                    
+                    const progress = ((currentStep + 1) / steps.length) * 100;
+                    progressFill.style.width = progress + '%';
+                    
+                    currentStep++;
                 } else {
-                    // Activation completed
-                    activationInProgress = false;
-                    const activateBtn = document.querySelector('.activate-btn');
-                    
-                    if (status.success) {
-                        activateBtn.textContent = '✅ ACTIVATION COMPLETE';
-                        activateBtn.style.background = 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
-                    } else {
-                        activateBtn.textContent = '❌ ACTIVATION FAILED';
-                        activateBtn.style.background = 'linear-gradient(135deg, #f56565 0%, #e53e3e 100%)';
-                    }
-                    
-                    // Reset after 5 seconds
-                    setTimeout(() => {
-                        resetActivationUI();
-                    }, 5000);
+                    clearInterval(interval);
+                    completeActivation(true);
                 }
-            } catch (error) {
-                console.error('Error polling status:', error);
-                setTimeout(pollStatus, 2000); // Retry after 2 seconds
+            }, 1500);
+        }
+        
+        function completeActivation(success) {
+            activationInProgress = false;
+            const activateBtn = document.querySelector('.activate-btn');
+            
+            if (success) {
+                activateBtn.textContent = '✅ ACTIVATION COMPLETE';
+                activateBtn.style.background = 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)';
+            } else {
+                activateBtn.textContent = '❌ ACTIVATION FAILED';
+                activateBtn.style.background = 'linear-gradient(135deg, #f56565 0%, #e53e3e 100%)';
             }
+            
+            // Reset after 5 seconds
+            setTimeout(() => {
+                resetActivationUI();
+            }, 5000);
         }
         
         function resetActivationUI() {
@@ -641,19 +734,6 @@
             document.getElementById('progressFill').style.width = '0%';
         }
         
-        // Handle custom radio ID input
-        document.getElementById('radioSelect').addEventListener('change', function() {
-            if (this.value === 'CUSTOM') {
-                const customId = prompt('Enter custom radio ID:');
-                if (customId) {
-                    // You could add this to the list or just use it temporarily
-                    console.log('Custom radio ID:', customId.toUpperCase());
-                } else {
-                    this.value = '';
-                }
-            }
-        });
-        
         // Auto-uppercase radio ID input
         document.getElementById('radioId').addEventListener('input', function() {
             this.value = this.value.toUpperCase();
@@ -661,15 +741,24 @@
         
         // Close modal when clicking outside
         window.addEventListener('click', function(event) {
-            const modal = document.getElementById('addModal');
-            if (event.target === modal) {
+            const addModal = document.getElementById('addModal');
+            const accessModal = document.getElementById('accessDeniedModal');
+            
+            if (event.target === addModal) {
                 closeAddModal();
+            }
+            if (event.target === accessModal) {
+                closeAccessDeniedModal();
             }
         });
         
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
-            refreshRadios();
+            initializeUserInterface();
+            
+            // Log user session info
+            console.log(`🔐 User: ${currentUser.username} (${currentUser.role})`);
+            console.log(`📊 Permissions: ${currentUser.role === 'admin' ? 'Full Access' : 'Activation Only'}`);
         });
     </script>
 </body>

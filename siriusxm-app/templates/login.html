@@ -282,7 +282,7 @@
             opacity: 0.7;
         }
         
-        .password-hint {
+        .user-accounts-info {
             background: #fff9c4;
             border: 1px solid #f1c40f;
             border-radius: 8px;
@@ -292,8 +292,15 @@
             color: #8e6a00;
         }
         
-        .password-hint strong {
+        .user-accounts-info strong {
             color: #b7950b;
+        }
+        
+        .user-accounts-info .account {
+            margin: 8px 0;
+            padding: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
         }
         
         @media (max-width: 480px) {
@@ -363,24 +370,28 @@
                 <p>Professional Radio Activation Service</p>
             </div>
             
-            <!-- Flash Messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="flash-messages">
-                        {% for category, message in messages %}
-                            <div class="flash-message {{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endwith %}
+            <!-- Login Error Messages Would Show Here -->
+            <div class="flash-messages" id="flashMessages" style="display: none;">
+                <div class="flash-message error" id="errorMessage"></div>
+            </div>
             
-            <form method="POST" id="loginForm">
+            <form action="/login" method="POST" id="loginForm">
                 <div class="form-group">
-                    <label for="password">🔑 Access Password:</label>
+                    <label for="username">👤 Username:</label>
+                    <input type="text" 
+                           id="username" 
+                           name="username" 
+                           placeholder="Enter your username"
+                           required
+                           autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">🔑 Password:</label>
                     <input type="password" 
                            id="password" 
                            name="password" 
-                           placeholder="Enter your secure password"
+                           placeholder="Enter your password"
                            required
                            autocomplete="current-password"
                            minlength="4">
@@ -391,14 +402,20 @@
                 </button>
             </form>
             
-            <div class="password-hint">
-                <strong>🔐 Security Note:</strong> Enter the password configured by your administrator. Sessions expire after 1 hour of inactivity for security.
+            <div class="user-accounts-info">
+                <strong>🔐 User Accounts:</strong>
+                <div class="account">
+                    <strong>👑 DaveHall:</strong> Administrator - Full access to add, delete, and activate radio IDs
+                </div>
+                <div class="account">
+                    <strong>⚙️ ShelbyHank:</strong> Operator - Can activate existing radio IDs only
+                </div>
             </div>
             
             <div class="security-info">
                 <h3>🛡️ <span>Security Features</span></h3>
                 <p>
-                    • Password-protected access<br>
+                    • Role-based access control<br>
                     • Secure session management<br>
                     • Professional radio activation<br>
                     • HTTPS encrypted connection
@@ -417,21 +434,34 @@
     </div>
 
     <script>
-        // Auto-focus password field when page loads
+        // Demo users for testing (you'll remove this and handle in backend)
+        const demoUsers = {
+            'DaveHall': 'schmij',
+            'ShelbyHank': 'schmij'
+        };
+        
+        // Auto-focus username field when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('password').focus();
+            document.getElementById('username').focus();
         });
         
-        // Handle form submission with loading state
+        // Handle form submission
         document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default for demo
+            
             const btn = document.getElementById('loginBtn');
             const form = document.getElementById('loginForm');
+            const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
             
             // Basic validation
+            if (!username) {
+                showError('Please enter your username');
+                return;
+            }
+            
             if (password.length < 4) {
-                e.preventDefault();
-                alert('Password must be at least 4 characters long');
+                showError('Password must be at least 4 characters long');
                 return;
             }
             
@@ -440,70 +470,90 @@
             btn.disabled = true;
             form.classList.add('loading');
             
-            // Add slight delay to show loading animation
+            // Demo authentication (replace with real backend call)
             setTimeout(() => {
-                // Form will submit naturally
-            }, 500);
+                if (demoUsers[username] && demoUsers[username] === password) {
+                    // Success - redirect to index.html
+                    localStorage.setItem('currentUser', username);
+                    localStorage.setItem('userRole', username === 'DaveHall' ? 'admin' : 'operator');
+                    window.location.href = 'index.html';
+                } else {
+                    // Failed login
+                    showError('Invalid username or password');
+                    resetForm();
+                }
+            }, 1500);
         });
         
-        // Handle password input
-        document.getElementById('password').addEventListener('input', function(e) {
+        function showError(message) {
+            const flashMessages = document.getElementById('flashMessages');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            flashMessages.style.display = 'block';
+            
+            // Hide error after 5 seconds
+            setTimeout(() => {
+                flashMessages.style.display = 'none';
+            }, 5000);
+        }
+        
+        function resetForm() {
             const btn = document.getElementById('loginBtn');
-            if (e.target.value.length >= 4) {
+            const form = document.getElementById('loginForm');
+            
+            btn.textContent = '🚀 ACCESS ACTIVATOR';
+            btn.disabled = false;
+            form.classList.remove('loading');
+        }
+        
+        // Handle input validation
+        document.getElementById('username').addEventListener('input', updateLoginButton);
+        document.getElementById('password').addEventListener('input', updateLoginButton);
+        
+        function updateLoginButton() {
+            const btn = document.getElementById('loginBtn');
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            
+            if (username.length > 0 && password.length >= 4) {
                 btn.style.opacity = '1';
             } else {
                 btn.style.opacity = '0.7';
             }
-        });
+        }
         
         // Show caps lock warning
-        document.getElementById('password').addEventListener('keyup', function(e) {
-            // Simple caps lock detection
-            if (e.getModifierState && e.getModifierState('CapsLock')) {
-                if (!document.getElementById('capsWarning')) {
-                    const warning = document.createElement('div');
-                    warning.id = 'capsWarning';
-                    warning.style.cssText = `
-                        background: #fff3cd;
-                        border: 1px solid #ffeaa7;
-                        border-radius: 6px;
-                        padding: 8px 12px;
-                        margin-top: 8px;
-                        font-size: 12px;
-                        color: #856404;
-                    `;
-                    warning.innerHTML = '⚠️ Caps Lock is ON';
-                    e.target.parentNode.appendChild(warning);
-                }
-            } else {
-                const warning = document.getElementById('capsWarning');
-                if (warning) {
-                    warning.remove();
+        document.addEventListener('keyup', function(e) {
+            if (e.target.type === 'password') {
+                if (e.getModifierState && e.getModifierState('CapsLock')) {
+                    if (!document.getElementById('capsWarning')) {
+                        const warning = document.createElement('div');
+                        warning.id = 'capsWarning';
+                        warning.style.cssText = `
+                            background: #fff3cd;
+                            border: 1px solid #ffeaa7;
+                            border-radius: 6px;
+                            padding: 8px 12px;
+                            margin-top: 8px;
+                            font-size: 12px;
+                            color: #856404;
+                        `;
+                        warning.innerHTML = '⚠️ Caps Lock is ON';
+                        e.target.parentNode.appendChild(warning);
+                    }
+                } else {
+                    const warning = document.getElementById('capsWarning');
+                    if (warning) {
+                        warning.remove();
+                    }
                 }
             }
         });
         
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Enter key submits form
-            if (e.key === 'Enter' && e.target.id !== 'password') {
-                document.getElementById('loginForm').submit();
-            }
-        });
-        
-        // Console logging for debugging
         console.log('🔐 SiriusXM Activator Login Page');
-        console.log('🌐 Domain: renslip.com');
-        console.log('🚀 Hosted on Railway');
-        console.log('⚡ Session timeout: 1 hour');
-        
-        // Add subtle animations on page load
-        setTimeout(() => {
-            document.querySelector('.login-container').style.transform = 'scale(1.01)';
-            setTimeout(() => {
-                document.querySelector('.login-container').style.transform = 'scale(1)';
-            }, 150);
-        }, 300);
+        console.log('Demo Users:');
+        console.log('👑 DaveHall / schmij');
+        console.log('⚙️ ShelbyHank / schmij');
     </script>
 </body>
 </html>
