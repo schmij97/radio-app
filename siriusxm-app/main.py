@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# main.py - Password-protected SiriusXM App for Render deployment
+# main.py - Password-protected SiriusXM App for Render deployment with Database Storage
 
 import sys
 import os
@@ -9,6 +9,8 @@ import time
 import uuid
 import json
 import threading
+import sqlite3
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 from functools import wraps
@@ -30,7 +32,8 @@ SESSION_TIMEOUT = 3600  # 1 hour in seconds
 
 # File storage (Render will handle this)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-RADIO_IDS_FILE = os.path.join(BASE_DIR, 'radio_ids.json')
+RADIO_IDS_FILE = os.path.join(BASE_DIR, 'radio_ids.json')  # Keep for migration purposes
+DATABASE_FILE = os.path.join(BASE_DIR, 'radio_data.db')
 
 # Global variables for status tracking
 activation_status = {"progress": 0, "status": "Ready", "completed": False, "success": False}
@@ -85,80 +88,175 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('login'))
 
-def load_radio_ids() -> List[Tuple[str, str]]:
-    """Load radio IDs from file, or return default list if file doesn't exist"""
-    default_radios = [
-        ("🆕 Custom Entry", "CUSTOM"),
-        ("Acura", "5XVVWA06"),
-        ("Truck", "Q2EV928P"),
-        ("Jaguar", "BTGBM48Y"),
-        ("Trev's car", "055515329200"),
-        ("Trev's Yukon", "6M2K32RP"),
-        ("Bob's truck", "H8NWC389"),
-        ("Bob's traverse", "8RCEM20P"),
-        ("Rogers truck", "KUGVK086"),
-        ("Windys yukon", "9092Z24W"),
-        ("Stef's car", "ZJHA8101"),
-        ("JT", "073617581556"),
-        ("Faddy's truck", "568CC38K"),
-        ("Faddys dads truck", "053139310355"),
-        ("Julie McFadden", "03MTAD4X"),
-        ("Frank's dodge", "76N1BACG"),
-        ("Wenzels oldie", "Y75T528N"),
-        ("Wenzel desk top", "UJGZ2QWW"),
-        ("Chris Anderson", "057220240031"),
-        ("Craig King Ranch", "032768368075"),
-        ("Dave Hall", "YDMJLEWU"),
-        ("Terras SUV", "HL3MB30"),
-        ("Stacey truck", "4UPA5D0A"),
-        ("Kitchen radio", "044528325001"),
-        ("Hanks radio", "039475329911"),
-        ("Shelby's radio", "031458220386"),
-        ("Adam", "87BZ62HD"),
-        ("McFadden Audi", "067145879367"),
-        ("Gord TRAVERSE", "0KGNV3HT"),
-        ("Gord Truck", "041592909611"),
-        ("Gords Truck #2", "00180002"),
-        ("Tbag", "MWBKU3M2"),
-        ("Tbag Daughter", "067177368177"),
-        ("Steranko", "081690989621"),
-        ("Micah", "0KT19AWL"),
-        ("Kaden", "L5E5A4WK"),
-        ("Braley", "ZNYMKEMQ"),
-        ("Listy #1", "CNJ1T3WZ"),
-        ("Carmen truck", "THGUDA05"),
-        ("Carmen Van", "079315292567"),
-        ("Kurt Baker", "ZX81P2R6"),
-        ("Deuchsher", "XMUPRE4G"),
-        ("Dustin M #1", "H55EU0R5"),
-        ("Dustin M #2", "AC0KG0CE"),
-        ("Brent", "0PBPB3R3"),
-        ("Baba's", "GXABAE0Z"),
-        ("Jeanie's Acura MDX", "GMGRPEMG"),
-        ("Listy #2", "A6E9QEH6"),
-        ("Chris Okoloise", "LD6E02H4")
-    ]
-    
-    if os.path.exists(RADIO_IDS_FILE):
-        try:
-            with open(RADIO_IDS_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return [(item['name'], item['radio_id']) for item in data]
-        except Exception as e:
-            print(f"Error loading radio IDs: {e}")
-            return default_radios
-    else:
-        save_radio_ids(default_radios)
-        return default_radios
-
-def save_radio_ids(radio_ids: List[Tuple[str, str]]) -> None:
-    """Save radio IDs to file"""
+# Database Functions
+@contextmanager
+def get_db_connection():
+    """Context manager for database connections"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    conn.row_factory = sqlite3.Row  # Enable column access by name
     try:
-        data = [{"name": name, "radio_id": radio_id} for name, radio_id in radio_ids]
-        with open(RADIO_IDS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        yield conn
+    finally:
+        conn.close()
+
+def init_database():
+    """Initialize the database and populate with default radio IDs"""
+    with get_db_connection() as conn:
+        # Create the radio_ids table
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS radio_ids (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                radio_id TEXT UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_default BOOLEAN DEFAULT 0
+            )
+        ''')
+        
+        # Check if we need to populate default data
+        cursor = conn.execute('SELECT COUNT(*) FROM radio_ids')
+        count = cursor.fetchone()[0]
+        
+        if count == 0:
+            # Insert all your default radio IDs
+            default_radios = [
+                ("🆕 Custom Entry", "CUSTOM"),
+                ("Acura", "5XVVWA06"),
+                ("Truck", "Q2EV928P"),
+                ("Jaguar", "BTGBM48Y"),
+                ("Trev's car", "055515329200"),
+                ("Trev's Yukon", "6M2K32RP"),
+                ("Bob's truck", "H8NWC389"),
+                ("Bob's traverse", "8RCEM20P"),
+                ("Rogers truck", "KUGVK086"),
+                ("Windys yukon", "9092Z24W"),
+                ("Stef's car", "ZJHA8101"),
+                ("JT", "073617581556"),
+                ("Faddy's truck", "568CC38K"),
+                ("Faddys dads truck", "053139310355"),
+                ("Julie McFadden", "03MTAD4X"),
+                ("Frank's dodge", "76N1BACG"),
+                ("Wenzels oldie", "Y75T528N"),
+                ("Wenzel desk top", "UJGZ2QWW"),
+                ("Chris Anderson", "057220240031"),
+                ("Craig King Ranch", "032768368075"),
+                ("Dave Hall", "YDMJLEWU"),
+                ("Terras SUV", "HL3MB30"),
+                ("Stacey truck", "4UPA5D0A"),
+                ("Kitchen radio", "044528325001"),
+                ("Hanks radio", "039475329911"),
+                ("Shelby's radio", "031458220386"),
+                ("Adam", "87BZ62HD"),
+                ("McFadden Audi", "067145879367"),
+                ("Gord TRAVERSE", "0KGNV3HT"),
+                ("Gord Truck", "041592909611"),
+                ("Gords Truck #2", "00180002"),
+                ("Tbag", "MWBKU3M2"),
+                ("Tbag Daughter", "067177368177"),
+                ("Steranko", "081690989621"),
+                ("Micah", "0KT19AWL"),
+                ("Kaden", "L5E5A4WK"),
+                ("Braley", "ZNYMKEMQ"),
+                ("Listy #1", "CNJ1T3WZ"),
+                ("Carmen truck", "THGUDA05"),
+                ("Carmen Van", "079315292567"),
+                ("Kurt Baker", "ZX81P2R6"),
+                ("Deuchsher", "XMUPRE4G"),
+                ("Dustin M #1", "H55EU0R5"),
+                ("Dustin M #2", "AC0KG0CE"),
+                ("Brent", "0PBPB3R3"),
+                ("Baba's", "GXABAE0Z"),
+                ("Jeanie's Acura MDX", "GMGRPEMG"),
+                ("Listy #2", "A6E9QEH6"),
+                ("Chris Okoloise", "LD6E02H4")
+            ]
+            
+            # Insert default radios with is_default=1
+            for name, radio_id in default_radios:
+                conn.execute('''
+                    INSERT OR IGNORE INTO radio_ids (name, radio_id, is_default) 
+                    VALUES (?, ?, ?)
+                ''', (name, radio_id, 1 if radio_id != "CUSTOM" else 0))
+            
+            conn.commit()
+            print(f"✅ Database initialized with {len(default_radios)} default radio IDs")
+
+def load_radio_ids():
+    """Load all radio IDs from database (both default and user-added)"""
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.execute('''
+                SELECT name, radio_id 
+                FROM radio_ids 
+                ORDER BY 
+                    CASE WHEN radio_id = 'CUSTOM' THEN 0 ELSE 1 END,
+                    name
+            ''')
+            radios = cursor.fetchall()
+            return [(row['name'], row['radio_id']) for row in radios]
     except Exception as e:
-        print(f"Error saving radio IDs: {e}")
+        print(f"❌ Database error loading radio IDs: {e}")
+        # Return minimal fallback
+        return [("🆕 Custom Entry", "CUSTOM"), ("Error", "DATABASE_ERROR")]
+
+def add_radio_to_db(name, radio_id):
+    """Add a new radio ID to the database"""
+    with get_db_connection() as conn:
+        # Check if radio_id already exists
+        cursor = conn.execute('SELECT name FROM radio_ids WHERE radio_id = ?', (radio_id,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            raise ValueError(f"Radio ID '{radio_id}' already exists for '{existing['name']}'")
+        
+        # Insert new radio
+        conn.execute('''
+            INSERT INTO radio_ids (name, radio_id, is_default) 
+            VALUES (?, ?, 0)
+        ''', (name, radio_id))
+        conn.commit()
+        print(f"✅ Added new radio: {name} - {radio_id}")
+
+def delete_radio_from_db(radio_id):
+    """Delete a radio ID from the database"""
+    with get_db_connection() as conn:
+        # Don't allow deletion of CUSTOM entry
+        if radio_id == "CUSTOM":
+            raise ValueError("Cannot delete the Custom Entry")
+        
+        cursor = conn.execute('SELECT name FROM radio_ids WHERE radio_id = ?', (radio_id,))
+        existing = cursor.fetchone()
+        
+        if not existing:
+            raise ValueError(f"Radio ID '{radio_id}' not found")
+        
+        conn.execute('DELETE FROM radio_ids WHERE radio_id = ?', (radio_id,))
+        conn.commit()
+        print(f"🗑️ Deleted radio: {existing['name']} - {radio_id}")
+
+def get_radio_stats():
+    """Get statistics about radio IDs in database"""
+    with get_db_connection() as conn:
+        cursor = conn.execute('''
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN is_default = 1 THEN 1 ELSE 0 END) as default_count,
+                SUM(CASE WHEN is_default = 0 AND radio_id != 'CUSTOM' THEN 1 ELSE 0 END) as user_added
+            FROM radio_ids
+        ''')
+        return cursor.fetchone()
+
+def initialize_app():
+    """Initialize the application and database"""
+    try:
+        init_database()
+        stats = get_radio_stats()
+        print(f"📊 Radio Database Stats:")
+        print(f"   Total: {stats['total']}")
+        print(f"   Default: {stats['default_count']}")
+        print(f"   User Added: {stats['user_added']}")
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
 
 @app.route('/dashboard')
 @login_required
@@ -193,30 +291,13 @@ def add_radio():
     if not name or not radio_id:
         return jsonify({"error": "Name and Radio ID are required"}), 400
     
-    radios = load_radio_ids()
-    
-    # Check for duplicates
-    existing_ids = [rid for _, rid in radios if rid != "CUSTOM"]
-    if radio_id in existing_ids:
-        return jsonify({"error": f"Radio ID '{radio_id}' already exists"}), 400
-    
-    # Add new radio
-    custom_entry = None
-    filtered_radios = []
-    for name_item, radio_item in radios:
-        if radio_item == "CUSTOM":
-            custom_entry = (name_item, radio_item)
-        else:
-            filtered_radios.append((name_item, radio_item))
-    
-    filtered_radios.append((name, radio_id))
-    
-    if custom_entry:
-        filtered_radios.insert(0, custom_entry)
-    
-    save_radio_ids(filtered_radios)
-    
-    return jsonify({"message": f"Added {name} - {radio_id}", "success": True})
+    try:
+        add_radio_to_db(name, radio_id)
+        return jsonify({"message": f"Added {name} - {radio_id}", "success": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
 
 @app.route('/api/radios/delete', methods=['POST'])
 @login_required
@@ -229,18 +310,31 @@ def delete_radio():
     data = request.json
     radio_id = data.get('radio_id', '').strip().upper()
     
-    if not radio_id or radio_id == "CUSTOM":
-        return jsonify({"error": "Invalid Radio ID"}), 400
+    if not radio_id:
+        return jsonify({"error": "Radio ID is required"}), 400
     
-    radios = load_radio_ids()
-    updated_radios = [(n, r) for n, r in radios if r != radio_id]
-    
-    if len(updated_radios) == len(radios):
-        return jsonify({"error": "Radio ID not found"}), 404
-    
-    save_radio_ids(updated_radios)
-    
-    return jsonify({"message": f"Deleted radio ID {radio_id}", "success": True})
+    try:
+        delete_radio_from_db(radio_id)
+        return jsonify({"message": f"Deleted radio ID {radio_id}", "success": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+@app.route('/api/radios/stats')
+@login_required
+def get_radio_statistics():
+    """Get radio database statistics"""
+    try:
+        stats = get_radio_stats()
+        return jsonify({
+            "total_radios": stats['total'],
+            "default_radios": stats['default_count'], 
+            "user_added_radios": stats['user_added'],
+            "success": True
+        })
+    except Exception as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
 
 @app.route('/activate', methods=['POST'])
 @login_required
@@ -478,6 +572,33 @@ class SiriusXMActivator:
                     "deviceID": self.uuid4,
                     "provisionPriority": "2",
                     "provisionType": "activate",
+                },
+            )
+            return True
+        except requests.exceptions.RequestException:
+            return None
+
+# Render deployment configuration
+if __name__ == '__main__':
+    # Initialize database before starting the app
+    initialize_app()
+    
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    
+    print("🚀 Starting SiriusXM Activator on Render...")
+    print(f"🌐 Port: {port}")
+    print("🔗 Will be available at: https://app.renslip.com")
+    print("")
+    print("⚠️  UPDATED USER SYSTEM:")
+    print("👑 DaveHall / schmij (Administrator)")
+    print("⚙️ ShelbyHank / schmij (Operator)")
+    print("🔑 CHANGE SECRET KEY before sharing!")
+    print("")
+    print("✅ Ready for production deployment!")
+    
+    # Render production configuration
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)",
                     "lat": "32.37436705",
                 },
             )
@@ -615,28 +736,4 @@ class SiriusXMActivator:
                     "device_Type": "iPhone iPhone 6 Plus",
                     "deviceID": self.uuid4,
                     "os_Version": "iPhone 12.5.7",
-                    "provisionType": "activate",
-                },
-            )
-            return True
-        except requests.exceptions.RequestException:
-            return None
-
-# Render deployment configuration
-if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    
-    print("🚀 Starting SiriusXM Activator on Render...")
-    print(f"🌐 Port: {port}")
-    print("🔗 Will be available at: https://app.renslip.com")
-    print("")
-    print("⚠️  UPDATED USER SYSTEM:")
-    print("👑 DaveHall / schmij (Administrator)")
-    print("⚙️ ShelbyHank / schmij (Operator)")
-    print("🔑 CHANGE SECRET KEY before sharing!")
-    print("")
-    print("✅ Ready for production deployment!")
-    
-    # Render production configuration
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+                    "provisionType": "activate
