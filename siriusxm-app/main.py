@@ -293,36 +293,62 @@ def load_radio_ids_sqlite():
         # Return defaults if everything fails
         return get_default_radios()
 
+# Replace your add_radio_to_db function with this enhanced debug version
+
 def add_radio_to_db(name, radio_id):
-    """Add radio with safe PostgreSQL/SQLite handling"""
+    """Add radio with enhanced debugging"""
+    print(f"🔍 DEBUG: Starting add_radio_to_db for {name} - {radio_id}")
+    print(f"🔍 DEBUG: DATABASE_URL present: {DATABASE_URL is not None}")
+    print(f"🔍 DEBUG: POSTGRESQL_AVAILABLE: {POSTGRESQL_AVAILABLE}")
+    
     try:
         if DATABASE_URL and POSTGRESQL_AVAILABLE:
+            print(f"🔍 DEBUG: Attempting PostgreSQL insert...")
             # PostgreSQL insert
             with psycopg.connect(DATABASE_URL) as conn:
+                print(f"🔍 DEBUG: PostgreSQL connection established")
                 with conn.cursor() as cursor:
+                    print(f"🔍 DEBUG: Checking for duplicates...")
                     # Check for duplicates
                     cursor.execute('SELECT name FROM radio_ids WHERE radio_id = %s', (radio_id,))
                     existing = cursor.fetchone()
                     
                     if existing:
+                        print(f"🔍 DEBUG: Duplicate found: {existing[0]}")
                         raise ValueError(f"Radio ID '{radio_id}' already exists for '{existing[0]}'")
                     
+                    print(f"🔍 DEBUG: No duplicates, inserting new radio...")
                     # Insert new radio
                     cursor.execute('''
                         INSERT INTO radio_ids (name, radio_id, is_default) 
                         VALUES (%s, %s, %s)
                     ''', (name, radio_id, False))
                     
+                    print(f"🔍 DEBUG: Insert executed, committing...")
                     conn.commit()
-                    print(f"✅ Added to PostgreSQL: {name} - {radio_id}")
+                    
+                    # Verify the insert worked
+                    cursor.execute('SELECT name FROM radio_ids WHERE radio_id = %s', (radio_id,))
+                    verify = cursor.fetchone()
+                    
+                    if verify:
+                        print(f"✅ Successfully added to PostgreSQL: {name} - {radio_id}")
+                        print(f"✅ Verification: Found {verify[0]} in database")
+                    else:
+                        print(f"❌ Insert failed - radio not found after commit")
+                        
                     return True
                     
         else:
+            print(f"🔍 DEBUG: Falling back to SQLite...")
             # Fallback to SQLite
             return add_radio_to_db_sqlite(name, radio_id)
             
     except Exception as e:
         print(f"❌ PostgreSQL add error: {e}")
+        print(f"❌ Error type: {type(e)}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
         print("🔄 Using SQLite fallback")
         return add_radio_to_db_sqlite(name, radio_id)
 
@@ -484,16 +510,35 @@ def add_radio():
     name = data.get('name', '').strip()
     radio_id = data.get('radio_id', '').strip().upper()
     
+    print(f"🔍 API DEBUG: Received add request for {name} - {radio_id}")
+    
     if not name or not radio_id:
         return jsonify({"error": "Name and Radio ID are required"}), 400
     
     try:
-        add_radio_to_db(name, radio_id)
-        return jsonify({"message": f"Added {name} - {radio_id}", "success": True})
+        print(f"🔍 API DEBUG: Calling add_radio_to_db...")
+        result = add_radio_to_db(name, radio_id)
+        print(f"🔍 API DEBUG: add_radio_to_db returned: {result}")
+        
+        # Verify it was actually added
+        radios = load_radio_ids()
+        found = any(rid == radio_id for _, rid in radios)
+        print(f"🔍 API DEBUG: Radio found in load_radio_ids: {found}")
+        
+        return jsonify({
+            "message": f"Added {name} - {radio_id}", 
+            "success": True,
+            "verified": found
+        })
     except ValueError as e:
+        print(f"❌ API DEBUG: ValueError: {e}")
         return jsonify({"error": str(e)}), 400
     except Exception as e:
+        print(f"❌ API DEBUG: Exception: {e}")
+        import traceback
+        print(f"❌ API DEBUG: Full traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Database error: {str(e)}"}), 500
+
 
 @app.route('/api/radios/delete', methods=['POST'])
 @login_required
@@ -580,7 +625,37 @@ def debug_database():
         
     except Exception as e:
         return jsonify({"error": f"Database debug error: {str(e)}"}), 500
-
+def test_db_connection():
+    """Test database connection"""
+    try:
+        if DATABASE_URL and POSTGRESQL_AVAILABLE:
+            with psycopg.connect(DATABASE_URL) as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute('SELECT version()')
+                    version = cursor.fetchone()[0]
+                    
+                    cursor.execute('SELECT COUNT(*) FROM radio_ids')
+                    count = cursor.fetchone()[0]
+                    
+                    return jsonify({
+                        "success": True,
+                        "database": "PostgreSQL",
+                        "version": version,
+                        "radio_count": count
+                    })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "PostgreSQL not available",
+                "database_url_present": DATABASE_URL is not None,
+                "postgresql_available": POSTGRESQL_AVAILABLE
+            })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "error_type": str(type(e))
+        })
 @app.route('/activate', methods=['POST'])
 @login_required
 def activate():
@@ -982,3 +1057,4 @@ if __name__ == '__main__':
     
     # Render production configuration
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+
