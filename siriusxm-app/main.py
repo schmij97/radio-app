@@ -14,6 +14,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 from functools import wraps
+import traceback
 
 # Try to import PostgreSQL library, fallback gracefully if not available
 try:
@@ -293,8 +294,6 @@ def load_radio_ids_sqlite():
         # Return defaults if everything fails
         return get_default_radios()
 
-# Replace your add_radio_to_db function with this enhanced debug version
-
 def add_radio_to_db(name, radio_id):
     """Add radio with enhanced debugging"""
     print(f"🔍 DEBUG: Starting add_radio_to_db for {name} - {radio_id}")
@@ -347,13 +346,13 @@ def add_radio_to_db(name, radio_id):
     except Exception as e:
         print(f"❌ PostgreSQL add error: {e}")
         print(f"❌ Error type: {type(e)}")
-        import traceback
         print(f"❌ Full traceback: {traceback.format_exc()}")
         print("🔄 Using SQLite fallback")
         return add_radio_to_db_sqlite(name, radio_id)
 
 def add_radio_to_db_sqlite(name, radio_id):
     """SQLite version of add_radio_to_db"""
+    print(f"🔍 DEBUG SQLite: Adding {name} - {radio_id}")
     with get_db_connection() as conn:
         # Check if radio_id already exists
         cursor = conn.execute('SELECT name FROM radio_ids WHERE radio_id = ?', (radio_id,))
@@ -535,10 +534,8 @@ def add_radio():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         print(f"❌ API DEBUG: Exception: {e}")
-        import traceback
         print(f"❌ API DEBUG: Full traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Database error: {str(e)}"}), 500
-
 
 @app.route('/api/radios/delete', methods=['POST'])
 @login_required
@@ -625,6 +622,9 @@ def debug_database():
         
     except Exception as e:
         return jsonify({"error": f"Database debug error: {str(e)}"}), 500
+
+@app.route('/api/debug/test-connection')
+@login_required
 def test_db_connection():
     """Test database connection"""
     try:
@@ -656,6 +656,7 @@ def test_db_connection():
             "error": str(e),
             "error_type": str(type(e))
         })
+
 @app.route('/activate', methods=['POST'])
 @login_required
 def activate():
@@ -1057,4 +1058,3 @@ if __name__ == '__main__':
     
     # Render production configuration
     app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
-
