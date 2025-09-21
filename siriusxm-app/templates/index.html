@@ -594,16 +594,45 @@
                 return;
             }
             
-            // Add to dropdown (in real app, this would save to database)
-            const select = document.getElementById('radioSelect');
-            const option = document.createElement('option');
-            option.value = radioId;
-            option.textContent = `${name}: ${radioId}`;
-            option.setAttribute('data-name', name);
-            select.appendChild(option);
+            console.log('🔍 Frontend: Sending add request for:', name, radioId);
             
-            alert(`✅ Radio added successfully!\n${name}: ${radioId}`);
-            closeAddModal();
+            // REAL API CALL to backend
+            fetch('/api/radios/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: name,
+                    radio_id: radioId
+                })
+            })
+            .then(response => {
+                console.log('🔍 Frontend: Got response:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔍 Frontend: Response data:', data);
+                if (data.success) {
+                    // Success - add to dropdown
+                    const select = document.getElementById('radioSelect');
+                    const option = document.createElement('option');
+                    option.value = radioId;
+                    option.textContent = `${name}: ${radioId}`;
+                    option.setAttribute('data-name', name);
+                    select.appendChild(option);
+                    
+                    alert(`✅ Radio added successfully!\n${name}: ${radioId}\nVerified: ${data.verified || 'unknown'}`);
+                    closeAddModal();
+                } else {
+                    // Error from server
+                    alert(`❌ Error adding radio:\n${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Frontend: Network error:', error);
+                alert(`❌ Network error:\n${error.message}`);
+            });
         }
         
         function deleteRadio() {
@@ -625,15 +654,68 @@
                 return;
             }
             
-            // Remove from dropdown (in real app, this would delete from database)
-            select.removeChild(select.options[select.selectedIndex]);
-            alert(`🗑️ Radio deleted successfully!\n${radioName}: ${radioId}`);
+            console.log('🔍 Frontend: Sending delete request for:', radioId);
+            
+            // REAL API CALL to backend
+            fetch('/api/radios/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    radio_id: radioId
+                })
+            })
+            .then(response => {
+                console.log('🔍 Frontend: Delete response:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔍 Frontend: Delete data:', data);
+                if (data.success) {
+                    // Success - remove from dropdown
+                    select.removeChild(select.options[select.selectedIndex]);
+                    alert(`🗑️ Radio deleted successfully!\n${radioName}: ${radioId}`);
+                } else {
+                    // Error from server
+                    alert(`❌ Error deleting radio:\n${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Frontend: Delete error:', error);
+                alert(`❌ Network error:\n${error.message}`);
+            });
         }
         
         function refreshRadios() {
-            // In real app, this would fetch from your backend
-            console.log('🔄 Refreshing radio list...');
-            alert('Radio list refreshed!');
+            console.log('🔍 Frontend: Refreshing radio list...');
+            
+            fetch('/api/radios')
+            .then(response => response.json())
+            .then(radios => {
+                const select = document.getElementById('radioSelect');
+                
+                // Clear existing options except the first one
+                while (select.children.length > 1) {
+                    select.removeChild(select.lastChild);
+                }
+                
+                // Add all radios from server
+                radios.forEach(radio => {
+                    const option = document.createElement('option');
+                    option.value = radio.radio_id;
+                    option.textContent = `${radio.name}: ${radio.radio_id}`;
+                    option.setAttribute('data-name', radio.name);
+                    select.appendChild(option);
+                });
+                
+                console.log('🔄 Radio list refreshed from server');
+                alert(`Radio list refreshed! Found ${radios.length} radios.`);
+            })
+            .catch(error => {
+                console.error('❌ Error refreshing radios:', error);
+                alert(`❌ Error refreshing radios:\n${error.message}`);
+            });
         }
         
         function activateRadio() {
@@ -667,40 +749,58 @@
             activateBtn.disabled = true;
             activateBtn.textContent = '🔄 ACTIVATING...';
             
-            // Simulate activation process
-            simulateActivation(radioName, radioId);
+            // REAL API CALL for activation
+            fetch('/activate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    radio_id: radioId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    // Start polling for status updates
+                    pollActivationStatus();
+                } else {
+                    throw new Error(data.error || 'Activation failed to start');
+                }
+            })
+            .catch(error => {
+                console.error('Activation error:', error);
+                activationInProgress = false;
+                activateBtn.disabled = false;
+                activateBtn.textContent = '🚀 ACTIVATE RADIO';
+                alert(`❌ Activation error:\n${error.message}`);
+            });
         }
         
-        function simulateActivation(radioName, radioId) {
-            const statusContainer = document.getElementById('statusContainer');
-            const progressFill = document.getElementById('progressFill');
-            
-            const steps = [
-                'Connecting to SiriusXM servers...',
-                'Validating radio ID...',
-                'Checking subscription status...',
-                'Sending activation signal...',
-                'Updating radio database...',
-                'Verifying activation...',
-                'Activation complete!'
-            ];
-            
-            let currentStep = 0;
-            
-            const interval = setInterval(() => {
-                if (currentStep < steps.length) {
-                    statusContainer.textContent += '\n' + steps[currentStep];
-                    statusContainer.scrollTop = statusContainer.scrollHeight;
-                    
-                    const progress = ((currentStep + 1) / steps.length) * 100;
-                    progressFill.style.width = progress + '%';
-                    
-                    currentStep++;
+        function pollActivationStatus() {
+            fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                // Update status display
+                document.getElementById('statusContainer').textContent = data.status;
+                document.getElementById('statusContainer').scrollTop = document.getElementById('statusContainer').scrollHeight;
+                
+                // Update progress bar
+                const progress = Math.min((data.progress / 11) * 100, 100);
+                document.getElementById('progressFill').style.width = progress + '%';
+                
+                if (data.completed) {
+                    // Activation finished
+                    completeActivation(data.success);
                 } else {
-                    clearInterval(interval);
-                    completeActivation(true);
+                    // Continue polling
+                    setTimeout(pollActivationStatus, 1000);
                 }
-            }, 1500);
+            })
+            .catch(error => {
+                console.error('Status polling error:', error);
+                completeActivation(false);
+            });
         }
         
         function completeActivation(success) {
