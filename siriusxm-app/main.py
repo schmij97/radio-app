@@ -971,6 +971,9 @@ class SiriusXMActivator:
             }
             params_str = json.dumps(params, separators=(',', ':'))
             
+            print(f'🔍 DEBUG update_1: Radio ID = {self.radio_id_input}')
+            print(f'🔍 DEBUG update_1: Auth Token = {self.auth_token[:50]}...')
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/USUpdateDeviceSATRefresh/updateDeviceSATRefreshWithPriority",
                 headers={
@@ -992,11 +995,29 @@ class SiriusXMActivator:
                     "provisionType": "activate",
                 },
             )
-            print(f'update_1 Response: {response.content}')
-            self.seq = response.json().get('seqValue')
+            
+            print(f'🔍 DEBUG update_1: Status Code = {response.status_code}')
+            print(f'🔍 DEBUG update_1: Response = {response.content}')
+            
+            if response.status_code != 200:
+                print(f'❌ update_1: HTTP error {response.status_code}')
+                return None
+            
+            response_json = response.json()
+            print(f'🔍 DEBUG update_1: JSON = {response_json}')
+            
+            self.seq = response_json.get('seqValue')
+            
+            if not self.seq:
+                print(f'❌ update_1: No seqValue in response')
+                return None
+                
+            print(f'✅ update_1: Got seqValue = {self.seq}')
             return self.seq
+            
         except Exception as e:
-            print(f'update_1 failed: {e}')
+            print(f'❌ update_1 failed with exception: {e}')
+            print(f'❌ Full traceback: {traceback.format_exc()}')
             return None
 
     def getCRM(self):
