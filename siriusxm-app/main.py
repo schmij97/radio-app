@@ -3,6 +3,7 @@
 
 import sys
 import os
+import logging
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 import requests
 import time
@@ -16,6 +17,14 @@ from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
 from functools import wraps
 import traceback
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+logger = logging.getLogger(__name__)
 
 # Try to import PostgreSQL library, fallback gracefully if not available
 try:
@@ -835,10 +844,11 @@ class SiriusXMActivator:
                     "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
             )
+            logger.info(f'Login response: {response.status_code}')
             self.auth_token = response.json().get('claims_token').get('value')
             return self.auth_token
         except Exception as e:
-            print(f'Login failed: {e}')
+            logger.error(f'Login failed: {e}')
             return None
 
     def versionControl(self):
@@ -971,8 +981,8 @@ class SiriusXMActivator:
             }
             params_str = json.dumps(params, separators=(',', ':'))
             
-            print(f'🔍 DEBUG update_1: Radio ID = {self.radio_id_input}')
-            print(f'🔍 DEBUG update_1: Auth Token = {self.auth_token[:50]}...')
+            logger.info(f'🔍 DEBUG update_1: Radio ID = {self.radio_id_input}')
+            logger.info(f'🔍 DEBUG update_1: Auth Token = {self.auth_token[:50] if self.auth_token else "None"}...')
             
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/USUpdateDeviceSATRefresh/updateDeviceSATRefreshWithPriority",
@@ -996,28 +1006,28 @@ class SiriusXMActivator:
                 },
             )
             
-            print(f'🔍 DEBUG update_1: Status Code = {response.status_code}')
-            print(f'🔍 DEBUG update_1: Response = {response.content}')
+            logger.info(f'🔍 DEBUG update_1: Status Code = {response.status_code}')
+            logger.info(f'🔍 DEBUG update_1: Response = {response.content}')
             
             if response.status_code != 200:
-                print(f'❌ update_1: HTTP error {response.status_code}')
+                logger.error(f'❌ update_1: HTTP error {response.status_code}')
                 return None
             
             response_json = response.json()
-            print(f'🔍 DEBUG update_1: JSON = {response_json}')
+            logger.info(f'🔍 DEBUG update_1: JSON = {response_json}')
             
             self.seq = response_json.get('seqValue')
             
             if not self.seq:
-                print(f'❌ update_1: No seqValue in response')
+                logger.error(f'❌ update_1: No seqValue in response')
                 return None
                 
-            print(f'✅ update_1: Got seqValue = {self.seq}')
+            logger.info(f'✅ update_1: Got seqValue = {self.seq}')
             return self.seq
             
         except Exception as e:
-            print(f'❌ update_1 failed with exception: {e}')
-            print(f'❌ Full traceback: {traceback.format_exc()}')
+            logger.error(f'❌ update_1 failed with exception: {e}')
+            logger.error(f'❌ Full traceback: {traceback.format_exc()}')
             return None
 
     def getCRM(self):
