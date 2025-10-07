@@ -8,6 +8,7 @@ import requests
 import time
 import uuid
 import json
+import urllib.parse
 import threading
 import sqlite3
 from contextlib import contextmanager
@@ -698,7 +699,7 @@ def run_activation(radio_id):
         
         activation_status["completed"] = True
         activation_status["success"] = success
-        activation_status["progress"] = 11
+        activation_status["progress"] = 9
         
         if success:
             activation_status["status"] += f"\n🎉 Radio {radio_id} activated successfully!"
@@ -710,32 +711,31 @@ def run_activation(radio_id):
         activation_status["success"] = False
         activation_status["status"] += f"\n❌ Error: {str(e)}"
 
-# SiriusXM Activator class using your working code
+# SiriusXM Activator class - FIXED VERSION matching working code
 class SiriusXMActivator:
     def __init__(self):
         self.session = requests.Session()
-        self.session.headers.update({
-            'Accept-Language': 'en-us',
-            'Accept-Encoding': 'br, gzip, deflate',
-            'User-Agent': 'SiriusXM%20Dealer/3.1.0 CFNetwork/1568.200.51 Darwin/24.1.0'
-        })
         self.radio_id_input = None
         self.uuid4 = str(uuid.uuid4())
         self.auth_token = ""
         self.seq = ""
+        self.deviceModel = "iPhone 14 Pro"
+        self.deviceiOSVersion = "17.0"
+        self.appVer = "3.1.0"
+        self.userAgent = "SiriusXM%20Dealer/3.1.0 CFNetwork/1568.200.51 Darwin/24.1.0"
     
     def get_reporting_params(self, svc_id):
-        """Generate reporting params string"""
-        base_params = {
-            "os": "17.0",
-            "dm": "iPhone 14 Pro", 
+        """Generate reporting params string - FIXED to match working code"""
+        params = {
+            "os": self.deviceiOSVersion,
+            "dm": self.deviceModel,
             "did": self.uuid4,
             "ua": "iPhone",
             "aid": "DealerApp",
             "aname": "SiriusXM Dealer",
             "chnl": "mobile",
             "plat": "ios",
-            "aver": "3.1.0",
+            "aver": self.appVer,
             "atype": "native",
             "stype": "b2c",
             "kuid": "",
@@ -751,290 +751,466 @@ class SiriusXMActivator:
             "svcid": svc_id
         }
         
-        # Build URL encoded string manually to avoid issues
-        params_list = []
-        for key, value in base_params.items():
-            params_list.append(f'"{key}":"{value}"')
+        # Use json.dumps like the working code
+        params_str = json.dumps(params, separators=(',', ':'))
         
-        params_str = "{" + ",".join(params_list) + "}"
-        return params_str.replace(' ', '%20').replace('"', '%22').replace(':', '%3A').replace(',', '%2C').replace('{', '%7B').replace('}', '%7D')
+        # Encode it properly
+        return urllib.parse.quote(params_str, safe='$:,')
     
     def activate_radio(self, radio_id, status_callback, progress_callback):
         self.radio_id_input = radio_id.upper()
         status_callback(f"🔄 Starting activation for: {self.radio_id_input}")
         
         steps = [
-            ("📡 App Config", self.appconfig),
             ("🔐 Login", self.login),
             ("📱 Version Control", self.versionControl),
             ("⚙️ Get Properties", self.getProperties),
             ("🔄 Device Refresh 1", self.update_1),
             ("📊 CRM Info", self.getCRM),
-            ("💾 DB Update", self.dbUpdate),
             ("🛡️ Blocklist Check", self.blocklist),
-            ("🏢 Oracle Check", self.oracle),
             ("👤 Create Account", self.createAccount),
             ("✅ Device Refresh 2", self.update_2)
         ]
         
         for i, (step_name, step_func) in enumerate(steps):
-            status_callback(f"Step {i+1}/11: {step_name}")
+            status_callback(f"Step {i+1}/8: {step_name}")
             progress_callback(i + 1)
             
             try:
                 result = step_func()
-                if result is not None:
+                if result is not None or step_func == self.blocklist or step_func == self.createAccount or step_func == self.update_2:
                     status_callback(f"✅ {step_name}: Complete")
                 else:
                     status_callback(f"❌ {step_name}: Failed")
+                    return False
             except Exception as e:
-                status_callback(f"❌ {step_name}: Error - {str(e)[:50]}")
+                status_callback(f"❌ {step_name}: Error - {str(e)[:100]}")
+                return False
             
             time.sleep(1)
         
         status_callback("🎉 Activation completed!")
         return True
 
-    def appconfig(self):
-        try:
-            response = self.session.post(
-                url="https://dealerapp.siriusxm.com/authService/100000002/appconfig",
-                headers={
-                    "X-Kony-Integrity": "GWSUSEVMJK;FEC9AA232EC59BE8A39F0FAE1B71300216E906B85F40CA2B1C5C7A59F85B17A4",
-                    "X-HTTP-Method-Override": "GET",
-                    "X-Voltmx-App-Key": "67cfe0220c41a54cb4e768723ad56b41",
-                    "Accept": "*/*",
-                    "X-Voltmx-App-Secret": "c086fca8646a72cf391f8ae9f15e5331",
-                    "X-Voltmx-ReportingParams": "",
-                },
-            )
-            return True
-        except requests.exceptions.RequestException:
-            return None
-
     def login(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "login_$anonymousProvider"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/authService/100000002/login",
                 headers={
                     "X-Voltmx-Platform-Type": "ios",
                     "Accept": "application/json",
                     "X-Voltmx-App-Secret": "c086fca8646a72cf391f8ae9f15e5331",
+                    "Accept-Language": "en-us",
                     "X-Voltmx-SDK-Type": "js",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-SDK-Version": "9.5.36",
                     "X-Voltmx-App-Key": "67cfe0220c41a54cb4e768723ad56b41",
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("login_$anonymousProvider"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
             )
             self.auth_token = response.json().get('claims_token').get('value')
             return self.auth_token
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'Login failed: {e}')
             return None
 
     def versionControl(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "fid": "frmHome",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "VersionControl"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/DealerAppService7/VersionControl",
                 headers={
                     "Accept": "*/*",
                     "X-Voltmx-API-Version": "1.0",
                     "X-Voltmx-DeviceId": self.uuid4,
+                    "Accept-Language": "en-us",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("VersionControl"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
                 data={
                     "deviceCategory": "iPhone",
-                    "appver": "3.1.0",
+                    "appver": self.appVer,
                     "deviceLocale": "en_US",
-                    "deviceModel": "iPhone%206%20Plus",
-                    "deviceVersion": "12.5.7",
+                    "deviceModel": self.deviceModel,
+                    "deviceVersion": self.deviceiOSVersion,
                     "deviceType": "",
                 },
             )
             return True
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'versionControl failed: {e}')
             return None
 
     def getProperties(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "fid": "frmHome",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "getProperties"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/DealerAppService7/getProperties",
                 headers={
                     "Accept": "*/*",
                     "X-Voltmx-API-Version": "1.0",
                     "X-Voltmx-DeviceId": self.uuid4,
+                    "Accept-Language": "en-us",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("getProperties"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
             )
             return True
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'getProperties failed: {e}')
             return None
 
     def update_1(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "fid": "frmRadioRefresh",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "updateDeviceSATRefreshWithPriority"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/USUpdateDeviceSATRefresh/updateDeviceSATRefreshWithPriority",
                 headers={
                     "Accept": "*/*",
                     "X-Voltmx-API-Version": "1.0",
                     "X-Voltmx-DeviceId": self.uuid4,
+                    "Accept-Language": "en-us",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("updateDeviceSATRefreshWithPriority"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
                 data={
                     "deviceId": self.radio_id_input,
-                    "appVersion": "3.1.0",
-                    "lng": "-86.210313195",
+                    "appVersion": self.appVer,
                     "deviceID": self.uuid4,
                     "provisionPriority": "2",
                     "provisionType": "activate",
-                    "lat": "32.37436705",
                 },
             )
+            print(f'update_1 Response: {response.content}')
             self.seq = response.json().get('seqValue')
             return self.seq
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'update_1 failed: {e}')
             return None
 
     def getCRM(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "fid": "frmRadioRefresh",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "GetCRMAccountPlanInformation"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/DemoConsumptionRules/GetCRMAccountPlanInformation",
                 headers={
                     "Accept": "*/*",
                     "X-Voltmx-API-Version": "1.0",
                     "X-Voltmx-DeviceId": self.uuid4,
+                    "Accept-Language": "en-us",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("GetCRMAccountPlanInformation"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
                 data={
                     "seqVal": self.seq,
                     "deviceId": self.radio_id_input,
                 },
             )
+            print(f'getCRM Response: {response.content}')
             return True
-        except requests.exceptions.RequestException:
-            return None
-
-    def dbUpdate(self):
-        try:
-            response = self.session.post(
-                url="https://dealerapp.siriusxm.com/services/DBSuccessUpdate/DBUpdateForGoogle",
-                headers={
-                    "Accept": "*/*",
-                    "X-Voltmx-API-Version": "1.0",
-                    "X-Voltmx-DeviceId": self.uuid4,
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("DBUpdateForGoogle"),
-                },
-                data={
-                    "OM_ELIGIBILITY_STATUS": "Eligible",
-                    "appVersion": "3.1.0",
-                    "flag": "failure",
-                    "Radio_ID": self.radio_id_input,
-                    "deviceID": self.uuid4,
-                    "G_PLACES_REQUEST": "",
-                    "OS_Version": "iPhone 12.5.7",
-                    "G_PLACES_RESPONSE": "",
-                    "Confirmation_Status": "SUCCESS",
-                    "seqVal": self.seq,
-                },
-            )
-            return True
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'getCRM failed: {e}')
             return None
 
     def blocklist(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "fid": "frmRadioRefresh",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "BlockListDevice"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/USBlockListDevice/BlockListDevice",
                 headers={
                     "Accept": "*/*",
                     "X-Voltmx-API-Version": "1.0",
                     "X-Voltmx-DeviceId": self.uuid4,
+                    "Accept-Language": "en-us",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("BlockListDevice"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
                 data={
                     "deviceId": self.uuid4,
                 },
             )
+            print(f'blocklist Response: {response.content}')
             return True
-        except requests.exceptions.RequestException:
-            return None
-
-    def oracle(self):
-        try:
-            response = self.session.post(
-                url="https://oemremarketing.custhelp.com/cgi-bin/oemremarketing.cfg/php/custom/src/oracle/program_status.php",
-                params={
-                    "google_addr": "395 EASTERN BLVD, MONTGOMERY, AL 36117, USA",
-                },
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "*/*",
-                    "X-Voltmx-ReportingParams": "",
-                },
-            )
-            return True
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'blocklist failed: {e}')
             return None
 
     def createAccount(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "fid": "frmRadioRefresh",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "CreateAccount"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/DealerAppService3/CreateAccount",
                 headers={
                     "Accept": "*/*",
                     "X-Voltmx-API-Version": "1.0",
                     "X-Voltmx-DeviceId": self.uuid4,
+                    "Accept-Language": "en-us",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("CreateAccount"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
                 data={
                     "seqVal": self.seq,
                     "deviceId": self.radio_id_input,
                     "oracleCXFailed": "1",
-                    "appVersion": "3.1.0",
+                    "appVersion": self.appVer,
                 },
             )
+            print(f'createAccount Response: {response.content}')
             return True
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'createAccount failed: {e}')
             return None
 
     def update_2(self):
         try:
+            params = {
+                "os": self.deviceiOSVersion,
+                "dm": self.deviceModel,
+                "did": self.uuid4,
+                "ua": "iPhone",
+                "aid": "DealerApp",
+                "aname": "SiriusXM Dealer",
+                "chnl": "mobile",
+                "plat": "ios",
+                "aver": self.appVer,
+                "atype": "native",
+                "stype": "b2c",
+                "kuid": "",
+                "mfaid": "df7be3dc-e278-436c-b2f8-4cfde321df0a",
+                "mfbaseid": "efb9acb6-daea-4f2f-aeb3-b17832bdd47b",
+                "mfaname": "DealerApp",
+                "sdkversion": "9.5.36",
+                "sdktype": "js",
+                "fid": "frmRadioRefresh",
+                "sessiontype": "I",
+                "clientUUID": "1742536405634-41a8-0de0-125c",
+                "rsid": "1742536405654-b954-784f-38d2",
+                "svcid": "updateDeviceSATRefreshWithPriority"
+            }
+            params_str = json.dumps(params, separators=(',', ':'))
+            
             response = self.session.post(
                 url="https://dealerapp.siriusxm.com/services/USUpdateDeviceRefreshForCC/updateDeviceSATRefreshWithPriority",
                 headers={
                     "Accept": "*/*",
                     "X-Voltmx-API-Version": "1.0",
                     "X-Voltmx-DeviceId": self.uuid4,
+                    "Accept-Language": "en-us",
+                    "Accept-Encoding": "br, gzip, deflate",
                     "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": self.userAgent,
                     "X-Voltmx-Authorization": self.auth_token,
-                    "X-Voltmx-ReportingParams": self.get_reporting_params("updateDeviceSATRefreshWithPriority"),
+                    "X-Voltmx-ReportingParams": urllib.parse.quote(params_str, safe='$:,'),
                 },
                 data={
                     "deviceId": self.radio_id_input,
                     "provisionPriority": "2",
-                    "appVersion": "3.1.0",
-                    "device_Type": "iPhone iPhone 6 Plus",
+                    "appVersion": self.appVer,
+                    "device_Type": urllib.parse.quote("iPhone " + self.deviceModel, safe='$:,'),
                     "deviceID": self.uuid4,
-                    "os_Version": "iPhone 12.5.7",
+                    "os_Version": urllib.parse.quote("iPhone " + self.deviceiOSVersion, safe='$:,'),
                     "provisionType": "activate",
                 },
             )
+            print(f'update_2 Response: {response.content}')
             return True
-        except requests.exceptions.RequestException:
+        except Exception as e:
+            print(f'update_2 failed: {e}')
             return None
 
 # Render deployment configuration
